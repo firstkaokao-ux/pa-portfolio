@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PA PORTFOLIO 2.0 :: ระบบรายงานผล PA</title>
+
+<!-- Windows 98 UI framework ตามที่บรีฟกำหนด -->
+<link rel="stylesheet" href="https://unpkg.com/98.css" />
+<!-- ฟอนต์: หัวข้อ/ตัวเลข = VT323 (พิกเซล) | เนื้อหา = Prompt -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ==========================================================
+   1) TOKENS — แก้สีตรงนี้ที่เดียว ถ้าจะปรับโทนทั้งเว็บ
+   ========================================================== */
+:root{
+  --bg:#0A0A0A;
+  --grid:#00CFFF;
+  --win-gray:#BDBDC7;
+  --chrome:#C0C0C0;
+  --blue:#00CFFF;
+  --blue-dark:#001433;
+  --pink:#FF00CC;
+  --lime:#CCFF00;
+  --ink:#0A0A0A;
+
+  --font-pixel:'VT323', monospace;
+  --font-body:'Prompt', sans-serif;
+}
+
+*{ box-sizing:border-box; }
+
+/* ==========================================================
+   2) พื้นหลัง: ดำสนิท + เส้นกริดน้ำเงิน + สแกนไลน์ + จอโค้งแบบ CRT
+   ========================================================== */
+html,body{
+  margin:0; padding:0; min-height:100%;
+  background-color:var(--bg);
+  font-family:var(--font-body);
+  color:#fff;
+  overflow-x:hidden;
+  cursor:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24"%3E%3Cpath d="M2 1 L2 20 L7 16 L10 22 L13 21 L10 15 L17 15 Z" fill="%2300CFFF" stroke="%23000000" stroke-width="1.4"/%3E%3C/svg%3E') 2 1, auto;
+}
+
+body::before{ /* เส้นกริดไฟฟ้า */
+  content:"";
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(0,207,255,.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,207,255,.16) 1px, transparent 1px);
+  background-size:38px 38px;
+  mask-image:radial-gradient(ellipse at center, #000 55%, transparent 95%);
+  z-index:0; pointer-events:none;
+}
+body::after{ /* สแกนไลน์แบบจอ CRT */
+  content:"";
+  position:fixed; inset:0;
+  background:repeating-linear-gradient(
+    to bottom, rgba(255,255,255,.035) 0px, rgba(255,255,255,.035) 1px,
+    transparent 2px, transparent 3px
+  );
+  z-index:9998; pointer-events:none; opacity:.5;
+}
+
+/* สติกเกอร์พิกเซลลอยตกแต่ง (ตกแต่งอย่างเดียว ไม่บังเนื้อหา) */
+.sticker{
+  position:fixed; z-index:1; pointer-events:none;
+  font-size:22px; filter:drop-shadow(0 0 6px currentColor);
+  animation:float 6s ease-in-out infinite;
+  opacity:.75;
+}
+.s1{ top:12%; left:4%;  color:var(--pink); animation-delay:0s;   font-size:26px;}
+.s2{ top:70%; left:6%;  color:var(--lime); animation-delay:1.2s; }
+.s3{ top:22%; right:5%; color:var(--blue); animation-delay:.6s;  font-size:28px;}
+.s4{ top:78%; right:8%; color:var(--pink); animation-delay:1.8s; }
+.s5{ top:45%; left:2%;  color:var(--lime); animation-delay:2.4s; font-size:18px;}
+@keyframes float{
+  0%,100%{ transform:translateY(0) rotate(0deg); }
+  50%{ transform:translateY(-16px) rotate(8deg); }
+}
+@media (max-width:820px){ .sticker{ display:none; } }
+
+/* ==========================================================
+   3) TOP BAR + เมนูแท็บโฟลเดอร์
+   ========================================================== */
+.topbar{
+  position:sticky; top:0; z-index:50;
+  background:linear-gradient(180deg,#111,#0a0a0a);
+  border-bottom:2px solid var(--blue);
+  box-shadow:0 0 14px rgba(0,207,255,.5);
+  padding:10px 16px 0;
+}
+.logo-row{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:8px;
+}
+.logo{
+  font-family:var(--font-pixel);
+  font-size:28px; letter-spacing:1px; color:var(--lime);
+  text-shadow:2px 2px 0 var(--pink);
+}
+.sys-clock{
+  font-family:var(--font-pixel); font-size:20px; color:var(--blue);
+  border:1px solid var(--blue); padding:2px 10px; background:#000;
+}
+
+/* แท็บโฟลเดอร์ (ใช้โครงจาก 98.css: menu[role=tablist] / li[role=tab]) */
+menu[role="tablist"]{
+  display:flex; flex-wrap:wrap; gap:2px;
+  padding:0; margin:0;
+}
+menu[role="tablist"] li[role="tab"] a{
+  font-family:var(--font-body); font-weight:600; font-size:14px;
+  color:#000; text-decoration:none;
+}
+menu[role="tablist"] li[role="tab"][aria-selected="true"] a{
+  color:var(--blue-dark);
+}
+
+/* ==========================================================
+   4) MARQUEE
+   ========================================================== */
+.marquee-wrap{
+  background:#000; border-top:1px solid var(--pink); border-bottom:1px solid var(--pink);
+  overflow:hidden; white-space:nowrap; padding:6px 0;
+}
+.marquee-track{
+  display:inline-block; padding-left:100%;
+  font-family:var(--font-pixel); font-size:20px; color:var(--pink);
+  text-shadow:0 0 8px var(--pink);
+  animation:marquee 18s linear infinite;
+}
+@keyframes marquee{
+  0%{ transform:translateX(0); }
+  100%{ transform:translateX(-100%); }
+}
+
+/* ==========================================================
+   5) เนื้อหาหลัก / กรอบหน้าต่างวินโดวส์
+   ========================================================== */
+main{
+  max-width:1080px; margin:26px auto 90px; padding:0 16px;
+  position:relative; z-index:2;
+}
+.pa-window{ display:none; }
+.pa-window.active{ display:block; animation:pop .18s ease; }
+@keyframes pop{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0);} }
+
+.pa-window .title-bar{
+  background:linear-gradient(90deg, var(--blue-dark), var(--blue)) !important;
+  box-shadow:0 0 10px rgba(0,207,255,.7);
+}
+.pa-window .title-bar-text{
+  font-family:var(--font-body); font-weight:600; letter-spacing:.3px;
+}
+.pa-window .window-body{
+  background:var(--win-gray);
+  font-family:var(--font-body); font-size:16px; line-height:1.7; color:#000;
+}
+.pa-window.minimized .window-body{ display:none; }
+.pa-window.maxed{
+  position:fixed; inset:0; z-index:9997;
+  max-width:none; margin:0; padding:22px;
+  background:var(--bg);
+  overflow-y:auto;
+}
+.pa-window.maxed .window{ max-width:1080px; margin:0 auto; }
+/* main มี position:relative + z-index ของตัวเอง ซึ่งสร้าง stacking context
+   ทำให้ .pa-window.maxed (position:fixed) ถูกขังอยู่ใต้ topbar/taskbar แม้ z-index จะสูงกว่า
+   จึงต้องยก z-index ของ main เองด้วยตอน maximize */
+main.has-maxed{ z-index:9990; }
+
+h2.section-title{
+  font-family:var(--font-pixel); font-size:30px; margin:0 0 10px;
+  color:var(--blue-dark); text-shadow:2px 2px 0 var(--pink);
+}
+mark.hl{
+  background:transparent; color:var(--pink); font-weight:700;
+  text-decoration:underline; text-decoration-style:wavy; text-underline-offset:3px;
+}
+
+/* ปุ่มโครเมียม 3D + hover ยุบตัว/ขอบประ */
+.btn-chrome{
+  font-family:var(--font-body); font-weight:600; font-size:14px;
+  padding:10px 18px; cursor:pointer;
+}
+.btn-chrome:hover{
+  transform:translateY(1px);
+  border:1px dashed var(--pink) !important;
+}
+
+/* กล่องรูปโปรไฟล์ ขอบโครเมียม */
+.profile-frame{
+  width:170px; height:210px;
+  background:repeating-linear-gradient(135deg,#e8e8ee 0 4px,#9a9aa4 4px 8px);
+  border:4px solid #dcdce2; box-shadow:0 0 0 2px #6d6d76, 0 0 16px rgba(0,207,255,.6);
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-size:13px; color:#333; padding:8px;
+}
+.profile-grid{ display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start; }
+.profile-fields dl{ display:grid; grid-template-columns:150px 1fr; gap:8px 12px; margin:0; }
+.profile-fields dt{ font-weight:700; }
+.profile-fields dd{ margin:0; }
+
+/* progress bar สไตล์แถบโหลดไฟล์เก่า */
+.progress-98{
+  height:24px; background:#000; border:2px solid #000;
+  box-shadow:inset 2px 2px 0 #6d6d76; padding:3px; margin:8px 0 4px;
+}
+.progress-98 .fill{
+  height:100%; width:0%;
+  background-image:repeating-linear-gradient(90deg, var(--lime) 0 12px, #0a0a0a 12px 16px);
+  transition:width 1.4s steps(24);
+}
+.progress-label{ font-family:var(--font-pixel); font-size:20px; color:var(--blue-dark); }
+
+/* กล่อง Windows Media Player จำลอง */
+.wmp-frame{
+  background:#000; border:3px solid #4a4a52;
+  box-shadow:inset 0 0 0 2px #1a1a1a;
+  padding:0; margin-bottom:12px;
+}
+.wmp-screen{
+  aspect-ratio:16/9; background:#050505;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--blue); font-size:52px; text-shadow:0 0 14px var(--blue);
+  border-bottom:2px solid #333;
+}
+.wmp-controls{
+  display:flex; align-items:center; gap:6px; padding:8px;
+  background:linear-gradient(180deg,#d9d9de,#a8a8b0);
+}
+.wmp-controls .bar{
+  flex:1; height:8px; background:#000; box-shadow:inset 1px 1px 0 #555;
+}
+.wmp-controls .bar span{ display:block; width:35%; height:100%; background:var(--lime); }
+
+/* การ์ดโฟลเดอร์ (ด้านที่ 2 / ด้านที่ 3) */
+.folder-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.folder-card{
+  background:#e8e8ee; border:2px solid #6d6d76;
+  box-shadow:2px 2px 0 #6d6d76; padding:14px; text-align:center;
+}
+.folder-card .icon{ font-size:44px; }
+.folder-card h4{ margin:6px 0 4px; font-family:var(--font-pixel); font-size:22px; color:var(--blue-dark); }
+.folder-card p{ margin:0; font-size:14px; }
+
+/* dashboard ผลลัพธ์ผู้เรียน */
+.stat-box{
+  background:#000; border:2px solid var(--lime); padding:14px; text-align:center;
+  box-shadow:0 0 14px rgba(204,255,0,.45);
+}
+.stat-box .num{
+  font-family:var(--font-pixel); font-size:52px; color:var(--lime);
+  text-shadow:2px 2px 0 var(--pink);
+}
+.gallery{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
+.gallery .art{
+  position:relative; aspect-ratio:1/1; background:repeating-linear-gradient(45deg,#e8e8ee 0 6px,#c6c6ce 6px 12px);
+  border:3px solid #6d6d76; display:flex; align-items:center; justify-content:center;
+  font-size:12px; text-align:center; padding:6px; color:#333;
+}
+.gallery .art::after{ content:"★"; position:absolute; top:-10px; right:-10px; color:var(--pink); font-size:20px; text-shadow:0 0 6px var(--pink); }
+
+/* ==========================================================
+   จอมือถือ/แท็บเล็ต: พับเลย์เอาต์ให้เป็นเวอร์ชันมือถือ
+   ========================================================== */
+@media (max-width:640px){
+  menu[role="tablist"]{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  menu[role="tablist"] li[role="tab"]{ flex:0 0 auto; }
+  .logo{ font-size:19px; }
+  .sys-clock{ font-size:13px; padding:2px 6px; }
+  .marquee-track{ font-size:15px; }
+  h2.section-title{ font-size:21px; }
+  .profile-grid{ flex-direction:column; align-items:center; text-align:center; }
+  .profile-fields dl{ grid-template-columns:120px 1fr; font-size:14px; }
+  .folder-grid{ grid-template-columns:1fr; }
+  .gallery{ grid-template-columns:1fr 1fr; }
+  .wmp-screen{ font-size:32px; }
+  .stat-box .num{ font-size:38px; }
+  .taskbar-current{ font-size:12px; }
+}
+
+/* ==========================================================
+   6) TASKBAR ล่างสไตล์ Windows 98
+   ========================================================== */
+.taskbar-bottom{
+  position:fixed; bottom:0; left:0; right:0; z-index:60;
+  background:var(--win-gray);
+  border-top:2px solid #fff;
+  box-shadow:0 -2px 10px rgba(0,0,0,.6);
+  display:flex; align-items:center; gap:10px;
+  padding:5px 10px;
+}
+.start-btn{
+  font-family:var(--font-body); font-weight:700; font-size:13px;
+  padding:6px 14px !important;
+}
+.taskbar-current{
+  flex:1; font-family:var(--font-body); font-size:13px; color:#000;
+  background:#fff; border:1px solid #6d6d76; box-shadow:inset 1px 1px 0 #6d6d76;
+  padding:4px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.taskbar-clock{
+  font-family:var(--font-pixel); font-size:18px; color:#000;
+  background:#fff; border:1px solid #6d6d76; box-shadow:inset 1px 1px 0 #6d6d76;
+  padding:2px 10px;
+}
+
+/* sparkle เคอร์เซอร์ */
+.sparkle{
+  position:fixed; z-index:9999; pointer-events:none;
+  font-size:14px; user-select:none;
+  animation:sparkle-fade .7s ease-out forwards;
+}
+@keyframes sparkle-fade{
+  0%{ opacity:1; transform:translate(-50%,-50%) scale(.4); }
+  60%{ opacity:1; transform:translate(-50%,-70%) scale(1.1); }
+  100%{ opacity:0; transform:translate(-50%,-110%) scale(.6); }
+}
+</style>
+</head>
+<body>
+
+<!-- สติกเกอร์พิกเซลลอยตกแต่งพื้นหลัง -->
+<span class="sticker s1">★</span>
+<span class="sticker s2">📁</span>
+<span class="sticker s3">✦</span>
+<span class="sticker s4">☆</span>
+<span class="sticker s5">✧</span>
+
+<!-- ============== TOP BAR + NAV ============== -->
+<header class="topbar">
+  <div class="logo-row">
+    <div class="logo">PA//PORTFOLIO_2.0</div>
+    <div class="sys-clock" id="sysClock">00:00:00</div>
+  </div>
+
+  <menu role="tablist" id="mainTabs">
+    <li role="tab" id="tab-btn-home" aria-selected="true" aria-controls="tab-home" tabindex="0" data-target="tab-home"><a href="#" tabindex="-1">หน้าแรก</a></li>
+    <li role="tab" id="tab-btn-info" aria-selected="false" aria-controls="tab-info" tabindex="-1" data-target="tab-info"><a href="#" tabindex="-1">ข้อมูลทั่วไป</a></li>
+    <li role="tab" id="tab-btn-pa1" aria-selected="false" aria-controls="tab-pa1" tabindex="-1" data-target="tab-pa1"><a href="#" tabindex="-1">PA ส่วนที่ 1</a></li>
+    <li role="tab" id="tab-btn-pa2" aria-selected="false" aria-controls="tab-pa2" tabindex="-1" data-target="tab-pa2"><a href="#" tabindex="-1">PA ส่วนที่ 2</a></li>
+    <li role="tab" id="tab-btn-result" aria-selected="false" aria-controls="tab-result" tabindex="-1" data-target="tab-result"><a href="#" tabindex="-1">ผลลัพธ์ผู้เรียน</a></li>
+  </menu>
+</header>
+
+<!-- ============== MARQUEE ============== -->
+<div class="marquee-wrap">
+  <div class="marquee-track">
+    ระบบรายงานผลการปฏิบัติตามข้อตกลงในการพัฒนางาน (PA) ประจำปีงบประมาณ [ระบุปี] สถานะ: ดำเนินการเสร็จสิ้น
+    &nbsp;&nbsp;&nbsp;&nbsp;★&nbsp;&nbsp;&nbsp;&nbsp;
+    ระบบรายงานผลการปฏิบัติตามข้อตกลงในการพัฒนางาน (PA) ประจำปีงบประมาณ [ระบุปี] สถานะ: ดำเนินการเสร็จสิ้น
+  </div>
+</div>
+
+<main>
+
+  <!-- ============== TAB 1: หน้าแรก ============== -->
+  <section class="pa-window active" id="tab-home" role="tabpanel" aria-labelledby="tab-btn-home" tabindex="0">
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-bar-text">ข้อมูลผู้รับการประเมิน.exe</div>
+        <div class="title-bar-controls">
+          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
+          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
+          <button aria-label="Close" onclick="closeWin()"></button>
+        </div>
+      </div>
+      <div class="window-body">
+        <h2 class="section-title">ข้อมูลผู้รับการประเมิน</h2>
+        <div class="profile-grid">
+          <div class="profile-frame">[แทรกรูปโปรไฟล์ 3x4]</div>
+          <div class="profile-fields">
+            <dl>
+              <dt>ชื่อ-สกุล</dt><dd>[ระบุชื่อ-สกุล]</dd>
+              <dt>ตำแหน่ง</dt><dd>ครู</dd>
+              <dt>กลุ่มสาระการเรียนรู้</dt><dd>[ระบุกลุ่มสาระ]</dd>
+              <dt>สถานศึกษา</dt><dd>[ระบุโรงเรียน]</dd>
+              <dt>สังกัด</dt><dd>[ระบุสังกัด]</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <div class="status-bar">
+        <p class="status-bar-field">READY</p>
+        <p class="status-bar-field">USER: [ระบุชื่อ]</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TAB 2: ข้อมูลทั่วไป / ภาระงาน ============== -->
+  <section class="pa-window" id="tab-info" role="tabpanel" aria-labelledby="tab-btn-info" tabindex="0">
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-bar-text">สรุปภาระงาน.exe</div>
+        <div class="title-bar-controls">
+          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
+          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
+          <button aria-label="Close" onclick="closeWin()"></button>
+        </div>
+      </div>
+      <div class="window-body">
+        <h2 class="section-title">สรุปภาระงาน</h2>
+
+        <p><b>ชั่วโมงสอน :</b> [ระบุจำนวน] ชม./สัปดาห์</p>
+        <div class="progress-98" data-percent="70"><div class="fill"></div></div>
+
+        <fieldset style="margin-top:18px;">
+          <legend>งานพิเศษ / งานโฮมรูม</legend>
+          <ul>
+            <li>[ระบุงานพิเศษ 1]</li>
+            <li>[ระบุงานพิเศษ 2]</li>
+            <li>ครูที่ปรึกษา / โฮมรูม [ระบุชั้น]</li>
+          </ul>
+        </fieldset>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TAB 3: PA ส่วนที่ 1 ============== -->
+  <section class="pa-window" id="tab-pa1" role="tabpanel" aria-labelledby="tab-btn-pa1" tabindex="0">
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-bar-text">ประเด็นท้าทาย.exe</div>
+        <div class="title-bar-controls">
+          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
+          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
+          <button aria-label="Close" onclick="closeWin()"></button>
+        </div>
+      </div>
+      <div class="window-body">
+        <h2 class="section-title">PA ส่วนที่ 1 : ข้อตกลงในการพัฒนางาน</h2>
+
+        <p>หัวข้อประเด็นท้าทาย: <b>[ระบุหัวข้อประเด็นท้าทาย]</b></p>
+        <p>
+          รายละเอียด: [ระบุรายละเอียดประเด็นท้าทาย] โดยมุ่งเน้นการ
+          <mark class="hl">ปรับประยุกต์</mark> รูปแบบการจัดการเรียนรู้ให้เหมาะสมกับผู้เรียน
+          [ระบุกลุ่มเป้าหมาย]
+        </p>
+
+        <button class="btn-chrome">📥 ดาวน์โหลดข้อตกลง PA 1/ส (PDF)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TAB 4: PA ส่วนที่ 2 ============== -->
+  <section class="pa-window" id="tab-pa2" role="tabpanel" aria-labelledby="tab-btn-pa2" tabindex="0">
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-bar-text">การจัดการเรียนรู้ (PA ส่วนที่ 2).exe</div>
+        <div class="title-bar-controls">
+          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
+          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
+          <button aria-label="Close" onclick="closeWin()"></button>
+        </div>
+      </div>
+      <div class="window-body">
+        <h2 class="section-title">ด้านที่ 1 : การจัดการเรียนรู้</h2>
+        <div class="wmp-frame">
+          <div class="wmp-screen">▶</div>
+          <div class="wmp-controls">
+            <button class="btn-chrome" style="min-width:36px;">⏮</button>
+            <button class="btn-chrome" style="min-width:36px;">▶</button>
+            <button class="btn-chrome" style="min-width:36px;">⏭</button>
+            <div class="bar"><span></span></div>
+          </div>
+        </div>
+        <p style="font-size:13px;">[แทรกวิดีโอการจัดการเรียนรู้วิชา ระบุวิชา]</p>
+        <button class="btn-chrome">📥 ดาวน์โหลดแผนการจัดการเรียนรู้</button>
+
+        <h2 class="section-title" style="margin-top:26px;">ด้านที่ 2–3 : การดูแลผู้เรียน &amp; PLC</h2>
+        <div class="folder-grid">
+          <div class="folder-card">
+            <div class="icon">📁</div>
+            <h4>ด้านที่ 2</h4>
+            <p>ระบบดูแลช่วยเหลือผู้เรียน<br>[ระบุกิจกรรม/หลักฐาน]</p>
+          </div>
+          <div class="folder-card">
+            <div class="icon">📁</div>
+            <h4>ด้านที่ 3</h4>
+            <p>ชุมชนแห่งการเรียนรู้ทางวิชาชีพ (PLC)<br>[ระบุกิจกรรม/หลักฐาน]</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== TAB 5: ผลลัพธ์ผู้เรียน ============== -->
+  <section class="pa-window" id="tab-result" role="tabpanel" aria-labelledby="tab-btn-result" tabindex="0">
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-bar-text">ผลลัพธ์ผู้เรียน.exe</div>
+        <div class="title-bar-controls">
+          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
+          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
+          <button aria-label="Close" onclick="closeWin()"></button>
+        </div>
+      </div>
+      <div class="window-body">
+        <h2 class="section-title">ผลลัพธ์ผู้เรียน [ระบุชั้น]</h2>
+
+        <div class="stat-box">
+          <div class="progress-label">ร้อยละของผู้เรียนที่ผ่านเกณฑ์</div>
+          <div class="progress-98" data-percent="[ระบุร้อยละ]"><div class="fill"></div></div>
+          <div class="num">[ระบุร้อยละ]%</div>
+        </div>
+
+        <h2 class="section-title" style="margin-top:22px;">ผลงานผู้เรียน</h2>
+        <div class="gallery">
+          <div class="art">[ผลงานนักเรียน 1]</div>
+          <div class="art">[ผลงานนักเรียน 2]</div>
+          <div class="art">[ผลงานนักเรียน 3]</div>
+          <div class="art">[ผลงานนักเรียน 4]</div>
+          <div class="art">[ผลงานนักเรียน 5]</div>
+          <div class="art">[ผลงานนักเรียน 6]</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============== TASKBAR ล่าง ============== -->
+<footer class="taskbar-bottom">
+  <button class="btn-chrome start-btn">▦ เริ่ม</button>
+  <div class="taskbar-current" id="taskbarLabel">ข้อมูลผู้รับการประเมิน.exe</div>
+  <div class="taskbar-clock" id="taskbarClock">00:00:00</div>
+</footer>
+
+<script>
+/* ---------- เปลี่ยนแท็บ ---------- */
+const tabs = document.querySelectorAll('#mainTabs li[role="tab"]');
+const panels = document.querySelectorAll('.pa-window');
+const taskbarLabel = document.getElementById('taskbarLabel');
+
+function animateBars(panel){
+  panel.querySelectorAll('.progress-98').forEach(bar=>{
+    const pct = parseFloat(bar.dataset.percent) || 0;
+    const fill = bar.querySelector('.fill');
+    fill.style.width = '0%';
+    requestAnimationFrame(()=> setTimeout(()=> fill.style.width = pct + '%', 60));
+  });
+}
+
+function activateTab(tab, focusTab){
+  tabs.forEach(t => {
+    t.setAttribute('aria-selected', 'false');
+    t.setAttribute('tabindex', '-1');
+  });
+  tab.setAttribute('aria-selected', 'true');
+  tab.setAttribute('tabindex', '0');
+  if(focusTab) tab.focus();
+  const targetId = tab.dataset.target;
+  panels.forEach(p => p.classList.remove('active'));
+  const targetPanel = document.getElementById(targetId);
+  targetPanel.classList.remove('minimized');
+  targetPanel.classList.add('active');
+  taskbarLabel.textContent = targetPanel.querySelector('.title-bar-text').textContent;
+  animateBars(targetPanel);
+}
+
+tabs.forEach(tab=>{
+  tab.addEventListener('click', e=>{
+    e.preventDefault();
+    activateTab(tab);
+  });
+});
+
+/* ---------- คีย์บอร์ด: ลูกศรซ้าย/ขวา, Home/End สลับแท็บ ---------- */
+document.getElementById('mainTabs').addEventListener('keydown', e=>{
+  const tabsArr = Array.from(tabs);
+  const currentTab = document.activeElement.closest('li[role="tab"]');
+  const currentIndex = tabsArr.indexOf(currentTab);
+  if(currentIndex === -1) return;
+
+  let nextIndex = null;
+  if(e.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabsArr.length;
+  else if(e.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabsArr.length) % tabsArr.length;
+  else if(e.key === 'Home') nextIndex = 0;
+  else if(e.key === 'End') nextIndex = tabsArr.length - 1;
+  else return;
+
+  e.preventDefault();
+  activateTab(tabsArr[nextIndex], true);
+});
+
+/* ---------- ปุ่มหน้าต่าง _ / □ / X ---------- */
+function toggleMin(btn){
+  btn.closest('.pa-window').classList.toggle('minimized');
+}
+function toggleMax(btn){
+  const panel = btn.closest('.pa-window');
+  const isMaxed = panel.classList.toggle('maxed');
+  document.querySelector('main').classList.toggle('has-maxed', isMaxed);
+}
+function closeWin(){
+  activateTab(tabs[0]); // ปิดหน้าต่าง = กลับสู่หน้าแรก
+}
+
+/* ---------- นาฬิกาสไตล์ทาสก์บาร์ ---------- */
+function tickClock(){
+  const s = new Date().toLocaleTimeString('th-TH', {hour12:false});
+  document.getElementById('sysClock').textContent = s;
+  document.getElementById('taskbarClock').textContent = s;
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ---------- Sparkle trail ตามเมาส์ (ปิดบนอุปกรณ์สัมผัส) ---------- */
+if(!('ontouchstart' in window)){
+  const glyphs = ['✦','✧','★','☆'];
+  const colors = ['#00CFFF','#FF00CC','#CCFF00'];
+  let last = 0;
+  window.addEventListener('mousemove', e=>{
+    const now = Date.now();
+    if(now - last < 45) return;
+    last = now;
+    const s = document.createElement('span');
+    s.className = 'sparkle';
+    s.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
+    s.style.left = e.clientX + 'px';
+    s.style.top = e.clientY + 'px';
+    s.style.color = colors[Math.floor(Math.random()*colors.length)];
+    document.body.appendChild(s);
+    setTimeout(()=> s.remove(), 700);
+  });
+}
+
+/* เล่นแอนิเมชันแถบพลังของแท็บแรกตอนโหลดหน้า */
+animateBars(document.getElementById('tab-home'));
+</script>
+
+</body>
+</html>
