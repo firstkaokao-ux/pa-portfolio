@@ -149,7 +149,7 @@ main{
 @keyframes pop{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0);} }
 
 .pa-window .title-bar{
-  background:linear-gradient(90deg, var(--blue-dark), var(--blue)) !important;
+  background:linear-gradient(90deg, var(--blue-dark), var(--blue));
   box-shadow:0 0 10px rgba(0,207,255,.7);
 }
 .pa-window .title-bar-text{
@@ -169,8 +169,10 @@ main{
 .pa-window.maxed .window{ max-width:1080px; margin:0 auto; }
 /* main มี position:relative + z-index ของตัวเอง ซึ่งสร้าง stacking context
    ทำให้ .pa-window.maxed (position:fixed) ถูกขังอยู่ใต้ topbar/taskbar แม้ z-index จะสูงกว่า
-   จึงต้องยก z-index ของ main เองด้วยตอน maximize */
-main.has-maxed{ z-index:9990; }
+   จึงต้องยก z-index ของ main เองด้วยตอน maximize — ใช้ :has() ให้ยกตามสถานะ DOM จริง
+   แทนการ toggle class คู่กันด้วย JS (ซึ่งหลุด sync ได้ง่ายเวลาเปลี่ยนแท็บ/ปิดหน้าต่าง)
+   ตั้งค่าให้สูงกว่าเอฟเฟกต์ scanline/sparkle (9998/9999) ด้วย เพื่อไม่ให้บังเนื้อหาตอนขยายเต็มจอ */
+main:has(.pa-window.maxed){ z-index:10000; }
 
 h2.section-title{
   font-family:var(--font-pixel); font-size:30px; margin:0 0 10px;
@@ -188,7 +190,7 @@ mark.hl{
 }
 .btn-chrome:hover{
   transform:translateY(1px);
-  border:1px dashed var(--pink) !important;
+  border:1px dashed var(--pink);
 }
 
 /* กล่องรูปโปรไฟล์ ขอบโครเมียม */
@@ -364,9 +366,9 @@ mark.hl{
       <div class="title-bar">
         <div class="title-bar-text">ข้อมูลผู้รับการประเมิน.exe</div>
         <div class="title-bar-controls">
-          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
-          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
-          <button aria-label="Close" onclick="closeWin()"></button>
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
+          <button aria-label="Close"></button>
         </div>
       </div>
       <div class="window-body">
@@ -397,9 +399,9 @@ mark.hl{
       <div class="title-bar">
         <div class="title-bar-text">สรุปภาระงาน.exe</div>
         <div class="title-bar-controls">
-          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
-          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
-          <button aria-label="Close" onclick="closeWin()"></button>
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
+          <button aria-label="Close"></button>
         </div>
       </div>
       <div class="window-body">
@@ -426,9 +428,9 @@ mark.hl{
       <div class="title-bar">
         <div class="title-bar-text">ประเด็นท้าทาย.exe</div>
         <div class="title-bar-controls">
-          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
-          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
-          <button aria-label="Close" onclick="closeWin()"></button>
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
+          <button aria-label="Close"></button>
         </div>
       </div>
       <div class="window-body">
@@ -452,9 +454,9 @@ mark.hl{
       <div class="title-bar">
         <div class="title-bar-text">การจัดการเรียนรู้ (PA ส่วนที่ 2).exe</div>
         <div class="title-bar-controls">
-          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
-          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
-          <button aria-label="Close" onclick="closeWin()"></button>
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
+          <button aria-label="Close"></button>
         </div>
       </div>
       <div class="window-body">
@@ -494,9 +496,9 @@ mark.hl{
       <div class="title-bar">
         <div class="title-bar-text">ผลลัพธ์ผู้เรียน.exe</div>
         <div class="title-bar-controls">
-          <button aria-label="Minimize" onclick="toggleMin(this)"></button>
-          <button aria-label="Maximize" onclick="toggleMax(this)"></button>
-          <button aria-label="Close" onclick="closeWin()"></button>
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
+          <button aria-label="Close"></button>
         </div>
       </div>
       <div class="window-body">
@@ -554,9 +556,10 @@ function activateTab(tab, focusTab){
   tab.setAttribute('tabindex', '0');
   if(focusTab) tab.focus();
   const targetId = tab.dataset.target;
-  panels.forEach(p => p.classList.remove('active'));
+  // สลับแท็บ = เริ่มมุมมองใหม่เสมอ เคลียร์ minimized/maxed ของทุกหน้าต่าง
+  // กัน state ค้าง (เช่น maximize แล้วสลับแท็บ กลับมาแล้วเจอเต็มจอทั้งที่ไม่ได้กด)
+  panels.forEach(p => { p.classList.remove('active', 'minimized', 'maxed'); });
   const targetPanel = document.getElementById(targetId);
-  targetPanel.classList.remove('minimized');
   targetPanel.classList.add('active');
   taskbarLabel.textContent = targetPanel.querySelector('.title-bar-text').textContent;
   animateBars(targetPanel);
@@ -588,17 +591,31 @@ document.getElementById('mainTabs').addEventListener('keydown', e=>{
 });
 
 /* ---------- ปุ่มหน้าต่าง _ / □ / X ---------- */
+/* minimize/maximize แยกกันไม่ได้ (mutual exclusion) กัน state ค้างเป็นกล่องดำว่างเปล่า */
 function toggleMin(btn){
-  btn.closest('.pa-window').classList.toggle('minimized');
+  const panel = btn.closest('.pa-window');
+  panel.classList.remove('maxed');
+  panel.classList.toggle('minimized');
 }
 function toggleMax(btn){
   const panel = btn.closest('.pa-window');
-  const isMaxed = panel.classList.toggle('maxed');
-  document.querySelector('main').classList.toggle('has-maxed', isMaxed);
+  panel.classList.remove('minimized');
+  panel.classList.toggle('maxed');
 }
 function closeWin(){
   activateTab(tabs[0]); // ปิดหน้าต่าง = กลับสู่หน้าแรก
 }
+
+/* ปุ่ม minimize/maximize/close ของทุกหน้าต่าง ใช้ event delegation จุดเดียว
+   แทนการผูก onclick ซ้ำ 3 ปุ่ม x 5 หน้าต่าง */
+document.querySelector('main').addEventListener('click', e=>{
+  const btn = e.target.closest('.title-bar-controls button[aria-label]');
+  if(!btn) return;
+  const action = btn.getAttribute('aria-label');
+  if(action === 'Minimize') toggleMin(btn);
+  else if(action === 'Maximize') toggleMax(btn);
+  else if(action === 'Close') closeWin();
+});
 
 /* ---------- นาฬิกาสไตล์ทาสก์บาร์ ---------- */
 function tickClock(){
@@ -613,24 +630,33 @@ setInterval(tickClock, 1000);
 if(!('ontouchstart' in window)){
   const glyphs = ['✦','✧','★','☆'];
   const colors = ['#00CFFF','#FF00CC','#CCFF00'];
+  // ใช้ pool ของ span ที่สร้างไว้ล่วงหน้า รีไซเคิลแทนสร้าง/ลบ node ใหม่ทุกครั้ง
+  const POOL_SIZE = 12;
+  const sparklePool = Array.from({length: POOL_SIZE}, () => {
+    const s = document.createElement('span');
+    s.className = 'sparkle';
+    s.style.display = 'none';
+    document.body.appendChild(s);
+    return s;
+  });
+  let poolIndex = 0;
   let last = 0;
   window.addEventListener('mousemove', e=>{
     const now = Date.now();
     if(now - last < 45) return;
     last = now;
-    const s = document.createElement('span');
-    s.className = 'sparkle';
+    const s = sparklePool[poolIndex];
+    poolIndex = (poolIndex + 1) % POOL_SIZE;
     s.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
     s.style.left = e.clientX + 'px';
     s.style.top = e.clientY + 'px';
     s.style.color = colors[Math.floor(Math.random()*colors.length)];
-    document.body.appendChild(s);
-    setTimeout(()=> s.remove(), 700);
+    s.style.display = '';
+    s.style.animation = 'none';
+    void s.offsetWidth; // force reflow เพื่อรีสตาร์ท animation
+    s.style.animation = '';
   });
 }
-
-/* เล่นแอนิเมชันแถบพลังของแท็บแรกตอนโหลดหน้า */
-animateBars(document.getElementById('tab-home'));
 </script>
 
 </body>
