@@ -449,7 +449,7 @@ mark.hl{
           ชั้นมัธยมศึกษาปีที่ 2
         </p>
 
-        <button class="btn-chrome">📥 ดาวน์โหลดข้อตกลง PA 1/ส (PDF)</button>
+        <button class="btn-chrome" data-download="PA.pdf" data-filename="PA_ข้อตกลง.pdf">📥 ดาวน์โหลดข้อตกลง PA 1/ส (PDF)</button>
       </div>
     </div>
   </section>
@@ -621,6 +621,18 @@ document.querySelector('main').addEventListener('click', e=>{
   if(action === 'Minimize') toggleMin(btn);
   else if(action === 'Maximize') toggleMax(btn);
   else if(action === 'Close') closeWin();
+});
+
+/* ปุ่มดาวน์โหลดไฟล์แนบ (PDF ฯลฯ) — trigger ดาวน์โหลดจริงผ่าน data-download */
+document.querySelectorAll('[data-download]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const a = document.createElement('a');
+    a.href = btn.dataset.download;
+    a.download = btn.dataset.filename || '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
 });
 
 /* ---------- นาฬิกาสไตล์ทาสก์บาร์ ---------- */
