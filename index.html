@@ -200,7 +200,9 @@ mark.hl{
   border:4px solid #dcdce2; box-shadow:0 0 0 2px #6d6d76, 0 0 16px rgba(0,207,255,.6);
   display:flex; align-items:center; justify-content:center; text-align:center;
   font-size:13px; color:#333; padding:8px;
+  overflow:hidden;
 }
+.profile-frame img{ width:100%; height:100%; object-fit:cover; }
 .profile-grid{ display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start; }
 .profile-fields dl{ display:grid; grid-template-columns:150px 1fr; gap:8px 12px; margin:0; }
 .profile-fields dt{ font-weight:700; }
@@ -374,7 +376,7 @@ mark.hl{
       <div class="window-body">
         <h2 class="section-title">ข้อมูลผู้รับการประเมิน</h2>
         <div class="profile-grid">
-          <div class="profile-frame">[img src="MEITU_20260909_102431386.jpg"]</div>
+          <div class="profile-frame"><img src="MEITU_20260909_102431386.jpg" alt="รูปโปรไฟล์ 3x4"></div>
           <div class="profile-fields">
             <dl>
               <dt>ชื่อ-สกุล</dt><dd>นางสาวณิชารัศม์ ฉัตรวุฒิรัศมิ์</dd>
