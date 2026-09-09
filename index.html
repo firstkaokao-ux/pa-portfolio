@@ -192,6 +192,16 @@ mark.hl{
   transform:translateY(1px);
   border:1px dashed var(--pink);
 }
+.btn-chrome:disabled{ opacity:.4; cursor:not-allowed; }
+.btn-chrome:disabled:hover{ transform:none; border:none; }
+
+/* ปุ่มนำทาง "ก่อนหน้า / ถัดไป" ตัวใหญ่ชัดเจน ไว้ท้ายทุกหน้าต่าง
+   เผื่อผู้ใช้ที่ไม่คุ้นกับแท็บด้านบน */
+.pa-nav{
+  display:flex; justify-content:space-between; gap:12px;
+  margin-top:26px; padding-top:16px; border-top:2px dashed #6d6d76;
+}
+.pa-nav .nav-btn{ font-size:18px; padding:14px 22px; }
 
 /* กล่องรูปโปรไฟล์ ขอบโครเมียม */
 .profile-frame{
@@ -380,6 +390,10 @@ mark.hl{
             </dl>
           </div>
         </div>
+        <div class="pa-nav">
+          <button class="btn-chrome nav-btn" data-nav="prev" disabled>◀ ก่อนหน้า</button>
+          <button class="btn-chrome nav-btn" data-nav="next">ถัดไป ▶</button>
+        </div>
       </div>
       <div class="status-bar">
         <p class="status-bar-field">READY</p>
@@ -416,6 +430,10 @@ mark.hl{
             <li>สร้างและพัฒนาสื่อการเรียนการสอน</li>
           </ul>
         </fieldset>
+        <div class="pa-nav">
+          <button class="btn-chrome nav-btn" data-nav="prev">◀ ก่อนหน้า</button>
+          <button class="btn-chrome nav-btn" data-nav="next">ถัดไป ▶</button>
+        </div>
       </div>
     </div>
   </section>
@@ -442,6 +460,10 @@ mark.hl{
         </p>
 
         <button class="btn-chrome" data-download="PA.pdf" data-filename="PA_ข้อตกลง.pdf">📥 ดาวน์โหลดข้อตกลง PA 1/ส (PDF)</button>
+        <div class="pa-nav">
+          <button class="btn-chrome nav-btn" data-nav="prev">◀ ก่อนหน้า</button>
+          <button class="btn-chrome nav-btn" data-nav="next">ถัดไป ▶</button>
+        </div>
       </div>
     </div>
   </section>
@@ -494,6 +516,10 @@ mark.hl{
             </div>
           </div>
         </div>
+        <div class="pa-nav">
+          <button class="btn-chrome nav-btn" data-nav="prev">◀ ก่อนหน้า</button>
+          <button class="btn-chrome nav-btn" data-nav="next">ถัดไป ▶</button>
+        </div>
       </div>
     </div>
   </section>
@@ -526,6 +552,10 @@ mark.hl{
           <div class="art"><img src="ผลงานผู้เรียน_Shopping_Mission_4.jpg" alt="กิจกรรม Shopping Mission" style="width:100%; height:100%; object-fit:cover;"></div>
           <div class="art"><img src="ผลงานผู้เรียน_Shopping_Mission_5.jpg" alt="กิจกรรม Shopping Mission" style="width:100%; height:100%; object-fit:cover;"></div>
           <div class="art"><img src="แดชบอร์ดสรุปผล_Exit_Ticket.jpg" alt="แดชบอร์ดสรุปผล Exit Ticket" style="width:100%; height:100%; object-fit:cover;"></div>
+        </div>
+        <div class="pa-nav">
+          <button class="btn-chrome nav-btn" data-nav="prev">◀ ก่อนหน้า</button>
+          <button class="btn-chrome nav-btn" data-nav="next" disabled>ถัดไป ▶</button>
         </div>
       </div>
     </div>
@@ -571,6 +601,13 @@ function activateTab(tab, focusTab){
   targetPanel.classList.add('active');
   taskbarLabel.textContent = targetPanel.querySelector('.title-bar-text').textContent;
   animateBars(targetPanel);
+
+  // ปิดปุ่ม "ก่อนหน้า"/"ถัดไป" ที่ปลายทาง กันงงเวลาไม่มีหน้าให้ไปต่อ
+  const tabIndex = Array.from(tabs).indexOf(tab);
+  const prevBtn = targetPanel.querySelector('.pa-nav [data-nav="prev"]');
+  const nextBtn = targetPanel.querySelector('.pa-nav [data-nav="next"]');
+  if(prevBtn) prevBtn.disabled = (tabIndex === 0);
+  if(nextBtn) nextBtn.disabled = (tabIndex === tabs.length - 1);
 }
 
 tabs.forEach(tab=>{
@@ -614,15 +651,26 @@ function closeWin(){
   activateTab(tabs[0]); // ปิดหน้าต่าง = กลับสู่หน้าแรก
 }
 
-/* ปุ่ม minimize/maximize/close ของทุกหน้าต่าง ใช้ event delegation จุดเดียว
-   แทนการผูก onclick ซ้ำ 3 ปุ่ม x 5 หน้าต่าง */
+/* ปุ่ม minimize/maximize/close/นำทาง ของทุกหน้าต่าง ใช้ event delegation จุดเดียว
+   แทนการผูก onclick ซ้ำในแต่ละหน้าต่าง */
 document.querySelector('main').addEventListener('click', e=>{
-  const btn = e.target.closest('.title-bar-controls button[aria-label]');
-  if(!btn) return;
-  const action = btn.getAttribute('aria-label');
-  if(action === 'Minimize') toggleMin(btn);
-  else if(action === 'Maximize') toggleMax(btn);
-  else if(action === 'Close') closeWin();
+  const winBtn = e.target.closest('.title-bar-controls button[aria-label]');
+  if(winBtn){
+    const action = winBtn.getAttribute('aria-label');
+    if(action === 'Minimize') toggleMin(winBtn);
+    else if(action === 'Maximize') toggleMax(winBtn);
+    else if(action === 'Close') closeWin();
+    return;
+  }
+  const navBtn = e.target.closest('.pa-nav [data-nav]');
+  if(navBtn && !navBtn.disabled){
+    const tabsArr = Array.from(tabs);
+    const currentTab = tabsArr.find(t => t.getAttribute('aria-selected') === 'true');
+    const currentIndex = tabsArr.indexOf(currentTab);
+    const offset = navBtn.dataset.nav === 'next' ? 1 : -1;
+    const nextIndex = currentIndex + offset;
+    if(nextIndex >= 0 && nextIndex < tabsArr.length) activateTab(tabsArr[nextIndex]);
+  }
 });
 
 /* ปุ่มดาวน์โหลดไฟล์แนบ (PDF ฯลฯ) — trigger ดาวน์โหลดจริงผ่าน data-download */
